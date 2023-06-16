@@ -31,6 +31,7 @@ import {Clouds,CloudsPlus} from "./three/Clouds";
 import MeshToPoints from './three/MeshToPoints'
 import SphereSky from './three/sphereSky'
 import PlayerCollisions from "./three/PlayerCollisions";
+import Stats from 'three/examples/jsm/libs/stats.module'
 const scene = new THREE.Scene();
 const textureLoader=new THREE.TextureLoader()
 // scene.add(camera);
@@ -168,6 +169,16 @@ onMounted(() => {
   const directionalLight=new THREE.DirectionalLight(0xfffffff,0.1)
   directionalLight.position.set(40,5,0)
   directionalLight.castShadow=true
+  directionalLight.shadow.camera.near = 0.01;
+			directionalLight.shadow.camera.far = 500;
+			directionalLight.shadow.camera.right = 30;
+			directionalLight.shadow.camera.left = - 30;
+			directionalLight.shadow.camera.top	= 30;
+			directionalLight.shadow.camera.bottom = - 30;
+			directionalLight.shadow.mapSize.width = 1024;
+			directionalLight.shadow.mapSize.height = 1024;
+			directionalLight.shadow.radius = 4;
+			directionalLight.shadow.bias = - 0.00006;
   scene.add(directionalLight)
 
   const waterPlane = new THREE.PlaneGeometry(300, 300);
@@ -208,6 +219,8 @@ onMounted(() => {
  
 
   })
+
+  
   gltfLoader.load("./models/city2.glb", (gltf) => {
     const city = gltf.scene;
 
@@ -226,6 +239,7 @@ onMounted(() => {
         child.receiveShadow  = true;
 
       }
+
      
         if (child.name === "汽车轨迹") {
           line = child;
@@ -355,11 +369,18 @@ const animate = () => {
   if(isRotationStar){
     pointQiao&&pointQiao.update(clock.getElapsedTime(),starState)
   }
-
+  stats.update();
   requestAnimationFrame(animate);
 };
   container.value.appendChild(renderer.domElement);
+  const stats = new Stats();
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.top = '10px';
+			stats.domElement.style.right = '0px';
+			stats.domElement.style.left = 'auto';
 
+
+			container.value.appendChild( stats.domElement );
   animate();
 });
 

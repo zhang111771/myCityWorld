@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import gsap from 'gsap'
 import eventHub from '@/utils/eventHub'
+//添加光晕
+import {Lensflare,LensflareElement} from 'three/examples/jsm/objects/Lensflare'
 export default class SphereSky{
     constructor(radius,texture,renderer){
         this.dayToNight=false
@@ -91,7 +93,19 @@ export default class SphereSky{
         this.sun.visible=false
         this.sun.add(sunLight)
         this.mesh.add(this.sun)
+        //光晕效果
+        const textureLoader=new THREE.TextureLoader()
+        const textureFlare0=textureLoader.load('./textures/lensflare/lensflare0.png')
+        const textureFlare3=textureLoader.load('./textures/lensflare/lensflare3.png')
 
+        const lensflare=new Lensflare()
+        lensflare.addElement(new LensflareElement(textureFlare0,100,0))
+        lensflare.addElement(new LensflareElement(textureFlare0,100,0.1))
+        lensflare.addElement(new LensflareElement(textureFlare0,100,0.4))
+        lensflare.addElement(new LensflareElement(textureFlare0,150,0.6))
+        lensflare.addElement(new LensflareElement(textureFlare0,150,0.8))
+
+        sunLight.add(lensflare)
     }
     updateSun(time){
         this.sun.position.x = -Math.cos(((time -6) * 2 * Math.PI) / 24) * 100;

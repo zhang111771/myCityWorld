@@ -85,12 +85,13 @@ document.addEventListener(
       // this.keyStates.isDown ||
       //   this.playerVelocity.addScaledVector(this.playerVelocity, damping);
     } else {
-      this.playerVelocity.y += this.grayity * deltaTime*2;
+      this.playerVelocity.y += this.grayity * deltaTime;
     }
 
 
     //计算玩家移动的距离
     this.playerMoveDistance = this.playerVelocity.clone().multiplyScalar(deltaTime);
+
     this.playerCollider.translate(this.playerMoveDistance);
     //将胶囊的位置进行设置
     this.playerCollider.getCenter(this.capsule.position);
@@ -143,23 +144,33 @@ document.addEventListener(
       // 计算玩家的速度
       this.playerVelocity.add(capsuleFront.multiplyScalar(deltaTime));
     }
+   
     if (this.keyStates["Space"]) {
-      this.playerVelocity.y = 0.8;
-      
+     
+     if(this.playerOnfloor){
+    
+      this.playerVelocity.y = 15;
+          //计算玩家移动的距离
+    this.playerMoveDistance = this.playerVelocity.clone().multiplyScalar(deltaTime);
+    this.playerCollider.translate(this.playerMoveDistance);
+    console.log(this.playerMoveDistance)
       if( Math.abs(this.playerVelocity.x) + Math.abs(this.playerVelocity.z) >
       0){
         this.fadeToAction('jump_running')
       }else{
         this.fadeToAction('jump_idle')
       }
-      
-      
+     }
+    
+ 
       
     }
+
   }
   update(deltaTime){
     this.controlPlayerCollider(deltaTime)
     this.controlPlayer(deltaTime)
+    this.resetPlayer()
     if (this.mixer) {
       this.mixer.update(deltaTime);
     }
@@ -212,6 +223,16 @@ document.addEventListener(
           .fadeIn(0.3)
           .play();
       });
+    }
+  }
+  resetPlayer() {
+    if (this.capsule.position.y < -5) {
+      this.playerCollider.start.set(0, 0.1, 0);
+      this.playerCollider.end.set(0, 0.11, 0);
+      this.playerCollider.radius = 0.05;
+      this.playerVelocity.set(0, 0 , 0);
+      this.playerDirection.set(0, 0, 0);
+      this.playerCollider.translate(new THREE.Vector3(30,10,0))
     }
   }
 }
