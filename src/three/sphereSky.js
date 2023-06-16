@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import eventHub from '@/utils/eventHub'
 export default class SphereSky{
     constructor(radius,texture,renderer){
+        this.dayToNight=false
         this.renderer=renderer
         let sphereSky=new THREE.SphereGeometry(radius,32,32)
         let material=new THREE.MeshBasicMaterial({
@@ -37,13 +38,14 @@ export default class SphereSky{
             `
             )
         }
-      
+       
         gsap.to(uTime,{
             value:24,
             duration:24,
             repeat:-1,
             onUpdate:(time)=>{
-                this.updateSun(uTime.value)
+                if(this.dayToNight){
+                    this.updateSun(uTime.value)
                 eventHub.emit('getSunTime',uTime.value)
                 if(uTime.value>6){
                     this.sun.visible=true
@@ -68,9 +70,12 @@ export default class SphereSky{
                     strength<0.5?(strength=0.5):(strength=strength)
                     renderer.toneMappingExposure=strength
                 }
+                }
+        
             
             }
         })
+        
         //创建太阳
         let sunGeometry=new THREE.SphereGeometry(5,32,32)
         let sunMaterial=new THREE.MeshBasicMaterial({
@@ -92,5 +97,8 @@ export default class SphereSky{
         this.sun.position.x = -Math.cos(((time -6) * 2 * Math.PI) / 24) * 100;
         this.sun.position.y = Math.sin(((time -6) * 2 * Math.PI) / 24) * 100;
 
+    }
+    setDayToNight(){
+        this.dayToNight=!this.dayToNight
     }
 }

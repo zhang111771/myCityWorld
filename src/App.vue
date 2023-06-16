@@ -30,6 +30,7 @@ import LightCircle from '@/three/LightCircle'
 import {Clouds,CloudsPlus} from "./three/Clouds";
 import MeshToPoints from './three/MeshToPoints'
 import SphereSky from './three/sphereSky'
+import PlayerCollisions from "./three/PlayerCollisions";
 const scene = new THREE.Scene();
 const textureLoader=new THREE.TextureLoader()
 // scene.add(camera);
@@ -38,37 +39,43 @@ const helper = new THREE.AxesHelper(5);
 scene.add(helper);
 
 const container = ref(null);
-let capsule = null;
 
-//设置重力
-const grayity = -0.098;
-//玩家的速度
-const playerVelocity = new THREE.Vector3(0, 0, 0);
-//方向向量
-const playerDirection = new THREE.Vector3(0, 0, 0);
-//玩家是否在地面上
-let playerOnfloor = false;
+let capsule = null;
+let boxman
+// //设置重力
+// const grayity = -0.098;
+// //玩家的速度
+// const playerVelocity = new THREE.Vector3(0, 0, 0);
+// //方向向量
+// const playerDirection = new THREE.Vector3(0, 0, 0);
+// //玩家是否在地面上
+// let playerOnfloor = false;
 
 const worldOctree = new Octree();
+const playerCollisions=new PlayerCollisions(worldOctree)
 const group = new THREE.Group();
 //创建一个碰撞体
-const playerCollider = new Capsule(
-  new THREE.Vector3(0, 0.1, 0),
-  new THREE.Vector3(0, 0.11, 0),
-  0.11
-);
+// const playerCollider = new Capsule(
+//   new THREE.Vector3(0, 0.1, 0),
+//   new THREE.Vector3(0, 0.11, 0),
+//   0.11
+// );
 //星星状态
 let starState=true
 // 键盘按下事件
-const keyStates = {
-  KeyW: false,
-  KeyA: false,
-  KeyS: false,
-  KeyD: false,
-  Space: false,
-  isDown: false,
-};
+// const keyStates = {
+//   KeyW: false,
+//   KeyA: false,
+//   KeyS: false,
+//   KeyD: false,
+//   Space: false,
+//   isDown: false,
+// };
 let pointQiao
+//是否旋转星空
+let isRotationStar=false
+
+let sphereSky
 onMounted(() => {
 
   //创建音频
@@ -178,7 +185,7 @@ onMounted(() => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.background = texture;
     scene.environment = texture;
-    const sphereSky=new SphereSky(180,texture,renderer)
+     sphereSky=new SphereSky(180,texture,renderer)
     scene.add(sphereSky.mesh)
   });
   const dracoLoader = new DRACOLoader();
@@ -189,6 +196,18 @@ onMounted(() => {
 
   dracoLoader.setDecoderPath("./draco/");
   gltfLoader.setDRACOLoader(dracoLoader);
+  gltfLoader.load('./models/boxman.glb',(gltf)=>{
+    gltf.castShadow=true
+    gltf.receiveShadow=true
+    boxman=gltf.scene
+    boxman.add(CameraModule.driveCarCamera)
+    CameraModule.driveCarCamera.lookAt(boxman.position);
+    scene.add(boxman)
+    playerCollisions.addCapsule(gltf)
+        
+ 
+
+  })
   gltfLoader.load("./models/city2.glb", (gltf) => {
     const city = gltf.scene;
 
@@ -224,13 +243,8 @@ onMounted(() => {
           curve = new THREE.CatmullRomCurve3(points);
         }
         if (child.name === "carGroup") {
+          
           car = child;
-
-          capsule = car.clone();
-          capsule.position.set(0, -1, 0);
-          capsule.add(CameraModule.driveCarCamera);
-          scene.add(capsule);
-
           car.add(CameraModule.carCamera);
         }
 
@@ -249,10 +263,6 @@ onMounted(() => {
         if(child.name==='水池001'||child.name==='水池009'){
      
           child.add(FireSprite.clone())
-          // const videoPlane=new VideoPlane('./video/MP4-001.mp4')
-          // videoPlane.mesh.rotation.x=-Math.PI/2
-          // videoPlane.mesh.position.set(0,-0.7,0)
-          // child.add(videoPlane.mesh.clone())
           const lightCircle=new LightCircle('./video/zp2.mp4',child)
           const texture=textureLoader.load('./textures/Marble062_Flat.jpg')
           child.material.map=texture
@@ -280,7 +290,8 @@ onMounted(() => {
     });
     scene.add(group);
     worldOctree.fromGraphNode(group);
-    gsap.to(curveProgress, {
+    if(car){
+      gsap.to(curveProgress, {
       value: 0.99999,
       duration: 50,
       repeat: -1,
@@ -294,25 +305,35 @@ onMounted(() => {
           if (CameraModule.activeCamera.name === "carCamera") {
             CameraModule.activeCamera.lookAt(car.position);
           }
-          if (CameraModule.activeCamera.name === "driveCarCamera") {
-            CameraModule.driveCarCamera.lookAt(capsule.position);
-          }
+
         }
       },
     });
+    }
+
     const clouds=new CloudsPlus().mesh
     scene.add(clouds)
     scene.add(city);
     console.log(renderer.info)
   });
+  eventHub.on('rotationStar',()=>{
+    isRotationStar=!isRotationStar
+  })
+  eventHub.on('dayToNight',()=>{
+
+    sphereSky.setDayToNight()
+  })
+  
   const clock = new THREE.Clock();
+  
 const animate = () => {
   const deltaTime = clock.getDelta();
   FireSprite.material.uniforms.uTime.value=clock.getElapsedTime()
   wallShaderMaterial.uniforms.uTime.value=clock.getElapsedTime()
-  if (capsule) {
-    updateCar(deltaTime);
-    controlPlayer(deltaTime);
+  if (playerCollisions.capsule) {
+    // updateCar(deltaTime);
+    // controlPlayer(deltaTime);
+    playerCollisions.update(deltaTime)
   }
   if(poor){
   //将相机转换为世界坐标
@@ -331,128 +352,17 @@ const animate = () => {
  
   ControlsModule.controls.update();
   renderer.render(scene, CameraModule.activeCamera);
-  pointQiao&&pointQiao.update(clock.getElapsedTime(),starState)
+  if(isRotationStar){
+    pointQiao&&pointQiao.update(clock.getElapsedTime(),starState)
+  }
+
   requestAnimationFrame(animate);
 };
   container.value.appendChild(renderer.domElement);
 
   animate();
 });
-function updateCar(deltaTime) {
-  let damping = -0.05;
-  if (playerOnfloor) {
-    playerVelocity.y = 0;
-    keyStates.isDown || playerVelocity.addScaledVector(playerVelocity, damping);
-  } else {
-    playerVelocity.y += grayity * deltaTime;
-  }
 
-  //计算玩家移动的距离
-  const playerMoveDistance = playerVelocity.clone().multiplyScalar(deltaTime);
-  playerCollider.translate(playerMoveDistance);
-  //将胶囊的位置进行设置
-  playerCollider.getCenter(capsule.position);
-  playerCollisions();
-}
-
-function playerCollisions() {
-  // 人物碰撞检测
-  const result = worldOctree.capsuleIntersect(playerCollider);
-  // console.log(result);
-  playerOnfloor = false;
-  if (result) {
-    playerOnfloor = result.normal.y > 0;
-    playerCollider.translate(result.normal.multiplyScalar(result.depth));
-  }
-}
-// 根据键盘按下的键来更新键盘的状态
-document.addEventListener(
-  "keydown",
-  (event) => {
-    keyStates[event.code] = true;
-    keyStates.isDown = true;
-  },
-  false
-);
-document.addEventListener(
-  "keyup",
-  (event) => {
-    keyStates[event.code] = false;
-    keyStates.isDown = false;
-  },
-  false
-);
-// document.addEventListener(
-//   "mousedown",
-//   (event) => {
-//     // 锁定鼠标指针
-//     if(CameraModule.activeCamera.name==='driveCarCamera'){
-//       document.body.requestPointerLock();
-//     }
-
-//   },
-//   false
-// );
-// 根据键盘状态更新玩家的速度
-function controlPlayer(deltaTime) {
-  if (keyStates["KeyW"]) {
-    playerDirection.z = 1;
-    //获取胶囊的正前面方向
-    const capsuleFront = new THREE.Vector3(0, 0, 0);
-    capsule.getWorldDirection(capsuleFront);
-   
-    // 计算玩家的速度
-    playerVelocity.add(capsuleFront.multiplyScalar(deltaTime*2));
-    console.log(playerVelocity);
-
-  }
-  if (keyStates["KeyS"]) {
-    playerDirection.z = 1;
-    //获取胶囊的正前面方向
-    const capsuleFront = new THREE.Vector3(0, 0, 0);
-    capsule.getWorldDirection(capsuleFront);
-    // console.log(capsuleFront);
-    // 计算玩家的速度
-    playerVelocity.add(capsuleFront.multiplyScalar(-deltaTime));
-  }
-  if (keyStates["KeyA"]) {
-    playerDirection.x = 1;
-    //获取胶囊的正前面方向
-    const capsuleFront = new THREE.Vector3(0, 0, 0);
-    capsule.getWorldDirection(capsuleFront);
-
-    // 侧方的方向，正前面的方向和胶囊的正上方求叉积，求出侧方的方向
-    capsuleFront.cross(capsule.up);
-    // console.log(capsuleFront);
-    // 计算玩家的速度
-    playerVelocity.add(capsuleFront.multiplyScalar(-deltaTime));
-  }
-  if (keyStates["KeyD"]) {
-    playerDirection.x = 1;
-    //获取胶囊的正前面方向
-    const capsuleFront = new THREE.Vector3(0, 0, 0);
-    capsule.getWorldDirection(capsuleFront);
-
-    // 侧方的方向，正前面的方向和胶囊的正上方求叉积，求出侧方的方向
-    capsuleFront.cross(capsule.up);
-    // console.log(capsuleFront);
-    // 计算玩家的速度
-    playerVelocity.add(capsuleFront.multiplyScalar(deltaTime));
-  }
-  if (keyStates["Space"]) {
-    playerVelocity.y = 0.5;
-  }
-}
-// 根据鼠标在屏幕移动，来旋转胶囊
-window.addEventListener(
-  "mousemove",
-  (event) => {
-    if (capsule && CameraModule.activeCamera.name === "driveCarCamera") {
-      capsule.rotation.y -= event.movementX * 0.005;
-    }
-  },
-  false
-);
 eventHub.on('backPoints',()=>{
 
     pointQiao.backPoints()

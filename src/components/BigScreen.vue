@@ -6,7 +6,9 @@
             <h1>相机控制</h1>
             <h3 @click="toggleControls('Orbit')">默认的相机视角</h3>
             <h3 @click="toggleCamera('carCamera')">设置相机追随汽车导览城市</h3>
-            <h3 @click="toggleCamera('driveCarCamera')">自驾汽车相机</h3>
+            <h3 @click="toggleCamera('driveCarCamera')">我的第一视角</h3>
+            <h3 @click="dayToNight">是否开启昼夜交替</h3>
+            <h3 @click="rotationStar">旋转星空</h3>
             <h3 @click="backPoints()">星汇聚成桥</h3>
             <h3 @click="pointsBlast()">桥变为星星</h3>
 
@@ -33,6 +35,12 @@ const backPoints=()=>{
 }
 const pointsBlast=()=>{
     eventHub.emit('pointsBlast')
+}
+const rotationStar=()=>{
+    eventHub.emit('rotationStar')
+}
+const dayToNight=()=>{
+    eventHub.emit('dayToNight')
 }
 </script>
 <style lang="scss" scoped>
